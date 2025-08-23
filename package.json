@@ -1,0 +1,27 @@
+{
+  "name": "aetherscribe-ai-worldbuilding-assistant",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A collaborative worldbuilding tool that uses AI to help creators flesh out their worlds. Generate detailed characters, locations, magic systems, and more from simple prompts, with a focus on structured, creative content generation.",
+  "scripts": {
+    "dev": "serve ."
+  },
+  "dependencies": {
+    "react-dom": "18.2.0",
+    "@google/genai": "^1.14.0",
+    "react": "18.2.0",
+    "jspdf": "^2.5.1",
+    "@tiptap/core": "2.4.0",
+    "@tiptap/react": "2.4.0",
+    "@tiptap/starter-kit": "2.4.0",
+    "prosemirror-state": "1.4.3",
+    "prosemirror-view": "1.33.6",
+    "prosemirror-model": "1.21.0",
+    "prosemirror-transform": "1.9.0",
+    "dompurify": "3.1.5",
+    "vis-network": "^10.0.1"
+  },
+  "devDependencies": {
+    "serve": "^14.2.3"
+  }
+}

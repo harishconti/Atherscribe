@@ -295,7 +295,15 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         const newProject: Project = { id: `proj_${Date.now()}`, name, createdAt: new Date().toISOString() };
         setProjects(prev => [newProject, ...prev]);
         setActiveProjectId(newProject.id);
-        setSelectedTemplate(defaultTemplates[0]);
+        
+        // Check if defaultTemplates is available and not empty before setting the selected template
+        if (defaultTemplates && defaultTemplates.length > 0) {
+            setSelectedTemplate(defaultTemplates[0]);
+        } else {
+            // Handle the case where defaultTemplates is not available
+            // This might involve setting a fallback or logging an error
+            console.error("Default templates are not available.");
+        }
     }, [defaultTemplates]);
     
     const handleDeleteProject = useCallback((projectId: string) => {

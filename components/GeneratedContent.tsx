@@ -3,7 +3,6 @@ import type { GeneratedContent, GeneratedContentSection } from '../types';
 import { exportToMarkdown, exportToPdf } from '../export';
 import { useAppContext } from '../contexts/AppContext';
 import Loader from './Loader';
-import { RichTextEditor } from './RichTextEditor';
 import DOMPurify from 'dompurify';
 
 interface GeneratedContentDisplayProps {
@@ -81,6 +80,12 @@ export default function GeneratedContentDisplay({ content, onSave, onClear, docu
   const [isEditing, setIsEditing] = useState(false);
   const [editableContent, setEditableContent] = useState<GeneratedContent | null>(null);
   const [isAutolinking, setIsAutolinking] = useState(false);
+
+  const stripHtml = (html: string) => {
+    const tmp = document.createElement("DIV");
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || "";
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => setVisible(true), 50);
@@ -215,7 +220,12 @@ export default function GeneratedContentDisplay({ content, onSave, onClear, docu
                             </div>
                              <div>
                                 <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Context / Reference</label>
-                                <RichTextEditor content={visualContent.context || ''} onChange={(newContent) => handleEditChange('context', newContent)} />
+                                <textarea
+                                  value={stripHtml(visualContent.context || '')}
+                                  onChange={(e) => handleEditChange('context', `<p>${e.target.value}</p>`)}
+                                  rows={6}
+                                  className="w-full p-3 bg-white dark:bg-slate-900/70 border border-slate-300 dark:border-slate-700 rounded-lg"
+                                />
                             </div>
                         </>
                     ) : (
@@ -243,9 +253,11 @@ export default function GeneratedContentDisplay({ content, onSave, onClear, docu
               <h3 className="text-xl font-semibold text-slate-800 dark:text-slate-200 mb-2">
                 {section.heading}
               </h3>
-              <RichTextEditor
-                content={section.content}
-                onChange={(newContent) => handleEditChange('section', newContent, index)}
+              <textarea
+                value={stripHtml(section.content)}
+                onChange={(e) => handleEditChange('section', `<p>${e.target.value}</p>`, index)}
+                rows={10}
+                className="w-full p-3 bg-white dark:bg-slate-900/70 border border-slate-300 dark:border-slate-700 rounded-lg"
               />
             </div>
           ))}

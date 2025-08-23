@@ -4,7 +4,6 @@ import Loader from './Loader';
 import GeneratedContentDisplay from './GeneratedContent';
 import { LOW_CREDIT_WARNING_THRESHOLD, INSUFFICIENT_CREDITS_ERROR_THRESHOLD } from '../constants';
 import { useAppContext } from '../contexts/AppContext';
-import { RichTextEditor } from './RichTextEditor';
 import { ActionButton } from './Buttons';
 
 export default function Generator() {
@@ -86,32 +85,36 @@ export default function Generator() {
   };
   
   const renderField = (field: { id: string, label: string, type: 'text' | 'textarea', placeholder?: string }) => {
-      const isDisabled = isLoading || isUploadMode;
+    const isDisabled = isLoading || isUploadMode;
 
-      return (
-          <div key={field.id} className="relative">
-              <label htmlFor={field.id} className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
-                  {field.label}
-              </label>
-              {field.type === 'textarea' ? (
-                <RichTextEditor
-                  content={isUploadMode && field.id === 'main_prompt' ? '<p><em>Using content from uploaded file...</em></p>' : (promptData[field.id] || '')}
-                  onChange={(newContent) => handleInputChange(field.id, newContent)}
-                  editable={!isDisabled}
+    return (
+        <div key={field.id} className="relative">
+            <label htmlFor={field.id} className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
+                {field.label}
+            </label>
+            {field.type === 'textarea' ? (
+                <textarea
+                    id={field.id}
+                    value={isUploadMode && field.id === 'main_prompt' ? 'Using content from uploaded file...' : (promptData[field.id] || '')}
+                    onChange={(e) => handleInputChange(field.id, e.target.value)}
+                    placeholder={field.placeholder}
+                    rows={8}
+                    className="w-full p-3 bg-white dark:bg-slate-900/70 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:outline-none transition-shadow text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 disabled:bg-slate-100 dark:disabled:bg-slate-800/60 disabled:cursor-not-allowed disabled:opacity-70"
+                    disabled={isDisabled}
                 />
-              ) : (
-                  <input
-                      id={field.id}
-                      type="text"
-                      value={promptData[field.id] || ''}
-                      onChange={(e) => handleInputChange(field.id, e.target.value)}
-                      placeholder={field.placeholder}
-                      className="w-full p-3 bg-white dark:bg-slate-900/70 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:outline-none transition-shadow text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 disabled:bg-slate-100 dark:disabled:bg-slate-800/60 disabled:cursor-not-allowed disabled:opacity-70"
-                      disabled={isDisabled}
-                  />
-              )}
-          </div>
-      );
+            ) : (
+                <input
+                    id={field.id}
+                    type="text"
+                    value={promptData[field.id] || ''}
+                    onChange={(e) => handleInputChange(field.id, e.target.value)}
+                    placeholder={field.placeholder}
+                    className="w-full p-3 bg-white dark:bg-slate-900/70 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:outline-none transition-shadow text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 disabled:bg-slate-100 dark:disabled:bg-slate-800/60 disabled:cursor-not-allowed disabled:opacity-70"
+                    disabled={isDisabled}
+                />
+            )}
+        </div>
+    );
   };
 
   return (

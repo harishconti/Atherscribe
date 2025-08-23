@@ -1,5 +1,4 @@
-
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useEditor, EditorContent, Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 
@@ -41,6 +40,7 @@ const Toolbar = ({ editor }: { editor: Editor | null }) => {
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleBulletList().run()}
+        disabled={!editor.can().chain().focus().toggleBulletList().run()}
         isActive={editor.isActive('bulletList')}
         title="Bullet List"
       >
@@ -58,50 +58,62 @@ interface RichTextEditorProps {
 }
 
 export const RichTextEditor = ({ content, onChange, editable = true }: RichTextEditorProps) => {
-  const editor = useEditor({
-    extensions: [
-      StarterKit.configure({
-        // Disable extensions we don't need for simplicity
-        strike: false,
-        code: false,
-        codeBlock: false,
-        blockquote: false,
-        horizontalRule: false,
-        heading: {
-            levels: [2, 3],
-        },
-      }),
-    ],
-    content: content,
-    onUpdate: ({ editor }) => {
-      onChange(editor.getHTML());
-    },
-    editorProps: {
-      attributes: {
-        class: 'prose dark:prose-invert max-w-none focus:outline-none p-4 w-full h-full min-h-[150px] bg-white dark:bg-slate-900/70 text-slate-700 dark:text-slate-300',
-      },
-    },
-    editable: editable,
-  });
-  
-  // Update editable state when prop changes
-  useEffect(() => {
-    if (editor && editor.isEditable !== editable) {
-      editor.setEditable(editable);
-    }
-  }, [editable, editor]);
-  
-  // Update content if it changes from parent (e.g. file upload)
-  useEffect(() => {
-    if (editor && content !== editor.getHTML()) {
-        editor.commands.setContent(content);
-    }
-  }, [content, editor]);
+    // Memoize the entire static configuration to ensure it's stable across renders.
+    const editorConfig = useMemo(() => {
+        return {
+            extensions: [
+                StarterKit.configure({
+                    // Explicitly enable extensions that provide commands for the toolbar
+                    bold: {},
+                    italic: {},
+                    bulletList: {},
+                    listItem: {}, // Required for bulletList
 
-  return (
-    <div className={`rounded-lg border border-slate-300 dark:border-slate-700 focus-within:ring-2 focus-within:ring-cyan-500 bg-white dark:bg-slate-900/70 ${!editable ? 'bg-slate-100 dark:bg-slate-800/60 cursor-not-allowed opacity-70' : ''}`}>
-      {editable && <Toolbar editor={editor} />}
-      <EditorContent editor={editor} />
-    </div>
-  );
+                    // Disable extensions we don't need for simplicity
+                    strike: false,
+                    code: false,
+                    codeBlock: false,
+                    blockquote: false,
+                    horizontalRule: false,
+                    heading: { levels: [2, 3] },
+                }),
+            ],
+            editorProps: {
+                attributes: {
+                    class: 'prose dark:prose-invert max-w-none focus:outline-none p-4 w-full h-full min-h-[150px] bg-white dark:bg-slate-900/70 text-slate-700 dark:text-slate-300',
+                },
+            },
+        };
+    }, []);
+
+    const editor = useEditor({
+        ...editorConfig,
+        content: content,
+        editable: editable,
+        onUpdate: ({ editor }) => {
+            onChange(editor.getHTML());
+        },
+    });
+
+    // Effect to update the editor's editable status when the prop changes.
+    useEffect(() => {
+        if (editor && editor.isEditable !== editable) {
+            editor.setEditable(editable);
+        }
+    }, [editable, editor]);
+
+    // Effect to update the editor's content when the prop changes from its parent.
+    useEffect(() => {
+        if (editor && content !== editor.getHTML()) {
+            // Set content without triggering the onUpdate callback to prevent infinite loops.
+            editor.commands.setContent(content, { emitUpdate: false });
+        }
+    }, [content, editor]);
+
+    return (
+        <div className={`rounded-lg border border-slate-300 dark:border-slate-700 focus-within:ring-2 focus-within:ring-cyan-500 bg-white dark:bg-slate-900/70 ${!editable ? 'bg-slate-100 dark:bg-slate-800/60 cursor-not-allowed opacity-70' : ''}`}>
+            {editable && <Toolbar editor={editor} />}
+            <EditorContent editor={editor} />
+        </div>
+    );
 };

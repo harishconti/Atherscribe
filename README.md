@@ -126,7 +126,6 @@ The codebase is organized to be clean, scalable, and easy to navigate.
 │   ├── Loader.tsx
 │   ├── PricingPage.tsx
 │   ├── ProjectView.tsx
-│   ├── RichTextEditor.tsx
 │   ├── SettingsModal.tsx
 │   ├── Sidebar.tsx
 │   ├── SignInPage.tsx

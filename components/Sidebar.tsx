@@ -49,7 +49,7 @@ interface DocumentButtonProps {
 
 const DocumentButton = ({ doc, isSelected }: DocumentButtonProps) => {
   const { handleSelectDocument, handleDeleteDocument, showConfirmation } = useAppContext();
-  
+
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     showConfirmation(
@@ -59,13 +59,36 @@ const DocumentButton = ({ doc, isSelected }: DocumentButtonProps) => {
     );
   };
 
+  const handleSelect = () => {
+    handleSelectDocument(doc.id);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleSelect();
+    }
+  };
+
+  const baseClasses = "flex group items-center justify-between w-full text-left pl-4 pr-2 py-2 rounded-lg transition-colors duration-200 text-sm cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500";
+  const selectedClasses = "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-400";
+  const unselectedClasses = "text-slate-600 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-700/50 dark:hover:text-slate-200";
+
   return (
-    <button onClick={() => handleSelectDocument(doc.id)} className={`flex group items-center justify-between w-full text-left pl-4 pr-2 py-2 rounded-lg transition-colors duration-200 text-sm ${isSelected ? "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-400" : "text-slate-600 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-700/50 dark:hover:text-slate-200"}`} title={doc.content.title}>
+    <div
+      onClick={handleSelect}
+      onKeyDown={handleKeyDown}
+      role="button"
+      tabIndex={0}
+      className={`${baseClasses} ${isSelected ? selectedClasses : unselectedClasses}`}
+      title={doc.content.title}
+    >
       <span className="font-normal truncate pr-2">{doc.content.title}</span>
       <DeleteButton onClick={handleDelete} aria-label={`Delete ${doc.content.title}`} />
-    </button>
+    </div>
   );
 };
+
 
 const ProjectWorkspaceView = () => {
   const {
@@ -247,6 +270,14 @@ const ProjectListView = () => {
             () => handleDeleteProject(project.id)
         );
     }
+    
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, projectId: string) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleSelectProject(projectId);
+        }
+    };
+
 
   return (
     <div className="flex flex-col h-full">
@@ -254,13 +285,20 @@ const ProjectListView = () => {
       
       <div className="flex-1 space-y-2 overflow-y-auto">
         {projects.map(project => (
-          <button key={project.id} onClick={() => handleSelectProject(project.id)} className="group flex items-center justify-between w-full text-left p-3 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/50 dark:hover:text-slate-100 transition-colors duration-200">
+          <div 
+            key={project.id} 
+            onClick={() => handleSelectProject(project.id)} 
+            onKeyDown={(e) => handleKeyDown(e, project.id)}
+            role="button"
+            tabIndex={0}
+            className="group flex items-center justify-between w-full text-left p-3 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/50 dark:hover:text-slate-100 transition-colors duration-200 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+          >
             <div className="flex-1 truncate">
               <span className="font-medium">{project.name}</span>
               <p className="text-xs text-slate-500">{documentCountByProject[project.id] || 0} documents</p>
             </div>
             <DeleteButton onClick={(e) => handleDelete(e, project)} aria-label={`Delete ${project.name}`} />
-          </button>
+          </div>
         ))}
          {projects.length === 0 && <p className="text-center text-slate-500 text-sm p-4">Create your first project to get started!</p>}
       </div>

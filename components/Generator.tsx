@@ -88,7 +88,7 @@ export default function Generator() {
     const isDisabled = isLoading || isUploadMode;
 
     return (
-        <div key={field.id} className="relative">
+        <div className="relative">
             <label htmlFor={field.id} className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
                 {field.label}
             </label>
@@ -171,7 +171,11 @@ export default function Generator() {
 
             {selectedTemplate.promptFields && selectedTemplate.promptFields.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {selectedTemplate.promptFields.map(field => renderField(field))}
+                {selectedTemplate.promptFields.map(field => (
+                  <div key={field.id} className={field.type === 'textarea' ? 'md:col-span-2' : ''}>
+                    {renderField(field)}
+                  </div>
+                ))}
               </div>
             )}
           </div>

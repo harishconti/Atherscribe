@@ -1,7 +1,9 @@
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import type { GeneratedContent, GeneratedContentSection } from '../types';
 import { exportToMarkdown, exportToPdf } from '../export';
 import { useAppContext } from '../contexts/AppContext';
+import { htmlToTextarea, textareaToHtml } from '../services/geminiService';
 import Loader from './Loader';
 import DOMPurify from 'dompurify';
 
@@ -81,12 +83,6 @@ export default function GeneratedContentDisplay({ content, onSave, onClear, docu
   const [editableContent, setEditableContent] = useState<GeneratedContent | null>(null);
   const [isAutolinking, setIsAutolinking] = useState(false);
 
-  const stripHtml = (html: string) => {
-    const tmp = document.createElement("DIV");
-    tmp.innerHTML = html;
-    return tmp.textContent || tmp.innerText || "";
-  };
-
   useEffect(() => {
     const timer = setTimeout(() => setVisible(true), 50);
     setIsEditing(false);
@@ -124,7 +120,7 @@ export default function GeneratedContentDisplay({ content, onSave, onClear, docu
         const current = prev as Extract<GeneratedContent, { imageUrl: string }>;
         if (type === 'title') return { ...current, title: value };
         if (type === 'prompt') return { ...current, prompt: value };
-        if (type === 'context') return { ...current, context: value };
+        if (type === 'context') return { ...current, context: value }; // Store raw text
         return current;
       }
 
@@ -134,7 +130,7 @@ export default function GeneratedContentDisplay({ content, onSave, onClear, docu
         if (type === 'title') return { ...current, title: value };
         if (type === 'section' && sectionIndex !== undefined) {
           const newSections = [...current.sections];
-          newSections[sectionIndex] = { ...newSections[sectionIndex], content: value };
+          newSections[sectionIndex] = { ...newSections[sectionIndex], content: value }; // Store raw text
           return { ...current, sections: newSections };
         }
         return current;
@@ -146,7 +142,20 @@ export default function GeneratedContentDisplay({ content, onSave, onClear, docu
 
   const handleSaveChanges = () => {
     if (documentId && handleUpdateDocument && editableContent) {
-      handleUpdateDocument(documentId, editableContent);
+      // Create a deep copy to modify
+      const contentToSave = JSON.parse(JSON.stringify(editableContent));
+
+      // Convert textarea plain text back to HTML before saving
+      if (contentToSave.sections) {
+        contentToSave.sections.forEach((section: GeneratedContentSection) => {
+          section.content = textareaToHtml(section.content);
+        });
+      }
+      if (contentToSave.context) {
+        contentToSave.context = textareaToHtml(contentToSave.context);
+      }
+
+      handleUpdateDocument(documentId, contentToSave);
       setIsEditing(false);
     }
   };
@@ -221,8 +230,8 @@ export default function GeneratedContentDisplay({ content, onSave, onClear, docu
                              <div>
                                 <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Context / Reference</label>
                                 <textarea
-                                  value={stripHtml(visualContent.context || '')}
-                                  onChange={(e) => handleEditChange('context', `<p>${e.target.value}</p>`)}
+                                  value={htmlToTextarea(visualContent.context || '')}
+                                  onChange={(e) => handleEditChange('context', e.target.value)}
                                   rows={6}
                                   className="w-full p-3 bg-white dark:bg-slate-900/70 border border-slate-300 dark:border-slate-700 rounded-lg"
                                 />
@@ -254,8 +263,8 @@ export default function GeneratedContentDisplay({ content, onSave, onClear, docu
                 {section.heading}
               </h3>
               <textarea
-                value={stripHtml(section.content)}
-                onChange={(e) => handleEditChange('section', `<p>${e.target.value}</p>`, index)}
+                value={htmlToTextarea(section.content)}
+                onChange={(e) => handleEditChange('section', e.target.value, index)}
                 rows={10}
                 className="w-full p-3 bg-white dark:bg-slate-900/70 border border-slate-300 dark:border-slate-700 rounded-lg"
               />

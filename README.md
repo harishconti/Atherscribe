@@ -36,7 +36,6 @@ This application runs entirely in your browser using a modern, build-less setup,
 -   **🕸️ Interactive Knowledge Graph**: Visualize the intricate connections between your documents with an interactive graph view. Each document is a node, and each \`@[link]\` is an edge, turning your project into a navigable knowledge map.
 -   **📄 File Upload for Prompts**: For complex ideas, bypass the standard input fields and upload a \`.txt\` or \`.md\` file directly. Its entire content will be used as the core prompt for generation.
 -   **🎨 AI Image Generation**: A dedicated "Visual" template leverages \`imagen-3.0-generate-002\` to bring your concepts to life, generating character portraits, location art, and more.
--   **✍️ Rich Text Editing**: A full rich-text editor allows you to format your documents with bold, italics, lists, and more, giving you greater control over your content's presentation.
 -   **💳 Dynamic Token-Based Credit System**:
     -   Manage your API usage with a system that links directly to token consumption.
     -   Costs are calculated dynamically: approximately **1 credit per 1,000 tokens** used for text generation, with a fixed cost of **10 credits** for image generation.
@@ -75,7 +74,6 @@ AetherScribe employs several advanced techniques to ensure the highest quality A
 -   **Frontend**: [React](https://reactjs.org/) with TypeScript (using Hooks and Context for state management)
 -   **Styling**: [Tailwind CSS](https://tailwindcss.com/) for a utility-first design system.
 -   **AI Engine**: [Google Gemini API](https://ai.google.dev/) (\`gemini-2.5-flash\`, \`imagen-3.0-generate-002\`) via the \`@google/genai\` SDK.
--   **Rich Text Editor**: [TipTap](https://tiptap.dev/) a modern, headless editor framework.
 -   **Graph Visualization**: [vis.js Network](https://visjs.github.io/vis-network/docs/network/) for the interactive knowledge graph.
 -   **PDF Export**: [jsPDF](https://github.com/parallax/jsPDF) for client-side PDF generation.
 -   **Persistence**: Browser LocalStorage API.

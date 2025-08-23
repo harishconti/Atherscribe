@@ -17,6 +17,66 @@ export function stripHtml(html: string): string {
    return doc.body.textContent || "";
 }
 
+// Converts simple HTML to a textarea-friendly format
+export function htmlToTextarea(html: string): string {
+    const tempDiv = document.createElement('div');
+    // Sanitize to prevent script injection if ever used in a different context
+    tempDiv.innerHTML = html; 
+
+    let textContent = '';
+    
+    // Iterate over child nodes to preserve order and spacing
+    tempDiv.childNodes.forEach(node => {
+        if (node.nodeName === 'P') {
+            textContent += (node.textContent || '') + '\n\n';
+        } else if (node.nodeName === 'UL') {
+            node.childNodes.forEach(li => {
+                if (li.nodeName === 'LI') {
+                    textContent += `- ${li.textContent || ''}\n`;
+                }
+            });
+            textContent += '\n'; // Add a space after the list
+        } else if (node.nodeType === Node.TEXT_NODE) {
+            textContent += node.textContent;
+        }
+    });
+
+    return textContent.trim();
+}
+
+// Converts textarea format back to simple HTML
+export function textareaToHtml(text: string): string {
+    const lines = text.split('\n');
+    let html = '';
+    let inList = false;
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+
+        if (line.startsWith('- ')) {
+            if (!inList) {
+                html += '<ul>';
+                inList = true;
+            }
+            html += `<li>${line.substring(2).trim()}</li>`;
+        } else {
+            if (inList) {
+                html += '</ul>';
+                inList = false;
+            }
+            if (line) { // Only create p tags for non-empty lines
+                html += `<p>${line}</p>`;
+            }
+        }
+    }
+
+    if (inList) {
+        html += '</ul>';
+    }
+
+    return html;
+}
+
 
 interface GenerationResult {
   content: GeneratedContent;

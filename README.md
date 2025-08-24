@@ -21,7 +21,7 @@
 
 AetherScribe bridges the gap between a fleeting idea and a fully-realized world. By leveraging the advanced capabilities of Google's Gemini API, it provides a structured yet flexible environment to generate, manage, and refine your creative concepts. Whether you're designing characters for a novel, locations for a TTRPG campaign, or magic systems for a video game, AetherScribe is your dedicated creative partner.
 
-This application runs entirely in your browser using a modern, build-less setup, ensuring your work and your API key remain private and secure on your own machine.
+This application uses a standard client-server architecture. The frontend is a modern React application built with Vite, and the backend is a lightweight Express.js server that securely handles API requests. Your work is saved in your browser's local storage, and your API key is kept secure on the server, never exposed to the browser.
 
 ## Key Features
 
@@ -77,19 +77,20 @@ AetherScribe employs several advanced techniques to ensure the highest quality A
 -   **Graph Visualization**: [vis.js Network](https://visjs.github.io/vis-network/docs/network/) for the interactive knowledge graph.
 -   **PDF Export**: [jsPDF](https://github.com/parallax/jsPDF) for client-side PDF generation.
 -   **Persistence**: Browser LocalStorage API.
--   **Module Loading**: Uses ES Modules with an \`importmap\` in the browser for a modern, **no-build-step** development experience.
+-   **Backend**: [Express.js](https://expressjs.com/) for the API proxy server.
+-   **Build Tool**: [Vite](https://vitejs.dev/) for a fast and modern development experience.
+-   **Persistence**: Browser LocalStorage API.
 
 ---
 
 ## Getting Started (Local Development)
 
-This project is a static web application that runs entirely in the browser without a build step.
+This project consists of a React frontend and an Express.js backend server.
 
 ### Prerequisites
 
--   A modern web browser (like Chrome, Firefox, or Edge).
--   A simple local web server. Node.js comes with \`npx\`, which makes this easy.
--   A Google Gemini API Key must be available as an environment variable named `API_KEY`. You can get a key from [Google AI Studio](https://aistudio.google.com/app/apikey).
+-   [Node.js](https://nodejs.org/) (v18 or higher recommended) and npm.
+-   A Google Gemini API Key. You can get a key from [Google AI Studio](https://aistudio.google.com/app/apikey).
 
 ### Installation & Setup
 
@@ -99,12 +100,38 @@ This project is a static web application that runs entirely in the browser witho
     cd [YOUR_REPO_NAME]
     ```
 
-2.  **Run the development server:**
-    From the root of the project directory, run a simple static file server. If you have Node.js installed, you can use \`serve\`:
+2.  **Install dependencies:**
+    This will install all the necessary packages for both the React frontend and the Express server.
     ```bash
-    npx serve
+    npm install
     ```
-    Now you can open your browser and navigate to the local address provided by the server (e.g., \`http://localhost:3000\`).
+
+3.  **Set up your environment variables:**
+    Create a new file named `.env` in the root of the project directory. This file will hold your secret API key and should not be committed to Git. Add your API key to it like this:
+    ```
+    # .env
+    GEMINI_API_KEY=your_gemini_api_key_here
+    ```
+
+4.  **Run the development server:**
+    This command starts the Vite dev server for the frontend and the Express backend server concurrently. The frontend will be available at `http://localhost:5173` by default, and it will automatically proxy API requests to the backend.
+    ```bash
+    npm run dev
+    ```
+
+### Building for Production
+
+1.  **Build the application:**
+    This command compiles the React application into optimized static files located in the `dist` directory.
+    ```bash
+    npm run build
+    ```
+
+2.  **Start the production server:**
+    This command starts the Express server, which will serve the optimized frontend from the `dist` directory.
+    ```bash
+    npm start
+    ```
 
 
 ---

@@ -1,15 +1,5 @@
-
-import { GoogleGenAI, Type } from "@google/genai";
 import type { Template, GeneratedContent, GeneratedContentSection, ResponseSchema, SavedDocument } from '../types';
 import { baseSchema } from '../constants';
-
-const apiKey = process.env.API_KEY;
-if (!apiKey) {
-  // This error is for the developer running the app, not the end-user.
-  console.error("Gemini API key not found. Make sure the API_KEY environment variable is set.");
-}
-
-const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 // Utility function to strip HTML tags from a string
 export function stripHtml(html: string): string {
@@ -20,12 +10,8 @@ export function stripHtml(html: string): string {
 // Converts simple HTML to a textarea-friendly format
 export function htmlToTextarea(html: string): string {
     const tempDiv = document.createElement('div');
-    // Sanitize to prevent script injection if ever used in a different context
-    tempDiv.innerHTML = html; 
-
+    tempDiv.innerHTML = html; // Let browser parse HTML
     let textContent = '';
-    
-    // Iterate over child nodes to preserve order and spacing
     tempDiv.childNodes.forEach(node => {
         if (node.nodeName === 'P') {
             textContent += (node.textContent || '') + '\n\n';
@@ -35,12 +21,11 @@ export function htmlToTextarea(html: string): string {
                     textContent += `- ${li.textContent || ''}\n`;
                 }
             });
-            textContent += '\n'; // Add a space after the list
+            textContent += '\n';
         } else if (node.nodeType === Node.TEXT_NODE) {
             textContent += node.textContent;
         }
     });
-
     return textContent.trim();
 }
 
@@ -49,10 +34,8 @@ export function textareaToHtml(text: string): string {
     const lines = text.split('\n');
     let html = '';
     let inList = false;
-
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
-
         if (line.startsWith('- ')) {
             if (!inList) {
                 html += '<ul>';
@@ -64,19 +47,16 @@ export function textareaToHtml(text: string): string {
                 html += '</ul>';
                 inList = false;
             }
-            if (line) { // Only create p tags for non-empty lines
+            if (line) {
                 html += `<p>${line}</p>`;
             }
         }
     }
-
     if (inList) {
         html += '</ul>';
     }
-
     return html;
 }
-
 
 interface GenerationResult {
   content: GeneratedContent;
@@ -92,44 +72,39 @@ async function generateImage(
   template: Template,
   promptData: Record<string, string>
 ): Promise<GenerationResult> {
-  if (!ai) throw new Error("API Key is not configured. Please add it to index.html.");
-
   const mainPrompt = stripHtml(promptData.main_prompt || 'A fantasy landscape.');
   const style = promptData.style ? `, in the style of ${stripHtml(promptData.style)}` : '';
   const mood = promptData.mood ? `, with a ${stripHtml(promptData.mood)} atmosphere` : '';
   const fullPrompt = `${mainPrompt}${style}${mood}.`;
 
   try {
-    const response = await ai.models.generateImages({
-      model: 'imagen-3.0-generate-002',
-      prompt: fullPrompt,
-      config: {
-        numberOfImages: 1,
-        outputMimeType: 'image/jpeg',
-        aspectRatio: '1:1',
-      },
+    const apiResponse = await fetch('/api/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: fullPrompt })
     });
 
-    if (!response.generatedImages || response.generatedImages.length === 0) {
-      throw new Error("Image generation failed, no images were returned.");
+    if (!apiResponse.ok) {
+        const errorData = await apiResponse.json();
+        throw new Error(errorData.error || 'Failed to generate image from backend.');
     }
-    
-    const base64ImageBytes: string = response.generatedImages[0].image.imageBytes;
-    const imageUrl = `data:image/jpeg;base64,${base64ImageBytes}`;
+
+    const { imageBytes } = await apiResponse.json();
+    const imageUrl = `data:image/jpeg;base64,${imageBytes}`;
 
     return {
       content: {
         title: mainPrompt,
         prompt: fullPrompt,
         imageUrl: imageUrl,
-        context: '', // Initialize context field
+        context: '',
       },
-      tokens: 0, // Image generation is not token-based in the same way.
+      tokens: 0, // Image generation cost is handled separately
     };
 
   } catch (error) {
-    console.error("Gemini Image API call failed:", error);
-    throw new Error("Failed to generate image. Please try again later.");
+    console.error("Backend image generation call failed:", error);
+    throw new Error(`Failed to generate image. ${error instanceof Error ? error.message : ''}`);
   }
 }
 
@@ -139,8 +114,6 @@ async function generateTextContent(
   isProAiMode: boolean,
   allDocuments: SavedDocument[]
 ): Promise<GenerationResult> {
-  if (!ai) throw new Error("API Key is not configured. Please add it to index.html.");
-
   // --- Process linked documents for context ---
   let linkedContext = '';
   const cleanedPromptData: Record<string, string> = {};
@@ -201,8 +174,6 @@ async function generateTextContent(
   let systemInstruction = template.systemInstruction;
   let schema = JSON.parse(JSON.stringify(template.schema)) as ResponseSchema;
 
-  const modelName = 'gemini-2.5-flash';
-
   if (template.isCustom && template.fields && template.fields.length > 0) {
     const fieldsString = template.fields.join(', ');
     systemInstruction += ` Your response MUST include these section headings: ${fieldsString}.`;
@@ -216,24 +187,31 @@ async function generateTextContent(
       }
   }
 
-  // --- API Call ---
+  // --- API Call to Backend Proxy ---
   try {
-    const response = await ai.models.generateContent({
-      model: modelName,
-      contents: fullPrompt,
-      config: {
-        systemInstruction: systemInstruction,
-        responseMimeType: "application/json",
-        responseSchema: schema,
-        temperature: template.temperature ?? 0.8,
-        topP: 0.95,
-      },
+    const apiResponse = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            prompt: fullPrompt,
+            generationConfig: {
+                response_mime_type: "application/json",
+                response_schema: schema,
+                temperature: template.temperature ?? 0.8,
+                top_p: 0.95,
+            },
+            systemInstruction: systemInstruction,
+        })
     });
     
-    const totalTokenCount = response.usageMetadata?.totalTokenCount ?? 0;
-    const text = response.text.trim();
+    if (!apiResponse.ok) {
+        const errorData = await apiResponse.json();
+        throw new Error(errorData.error || 'The backend failed to generate content.');
+    }
+
+    const { text, tokenCount } = await apiResponse.json();
     if (!text) {
-        throw new Error("Received an empty response from the API.");
+        throw new Error("Received an empty response from the backend.");
     }
 
     const cleanedText = text.replace(/^```json\s*|```\s*$/g, '');
@@ -256,7 +234,7 @@ async function generateTextContent(
         };
         return {
             content: transformedContent,
-            tokens: totalTokenCount,
+            tokens: tokenCount,
         };
     }
 
@@ -264,7 +242,6 @@ async function generateTextContent(
         throw new Error("Invalid JSON structure received from API. Expected 'title' and 'sections' array.");
     }
 
-    // Wrap generated content in <p> tags for the rich text editor
     const contentWithHtml: GeneratedContent = {
         ...parsedJson,
         sections: parsedJson.sections.map((sec: { heading: string, content: string }) => ({
@@ -275,15 +252,15 @@ async function generateTextContent(
 
     return {
         content: contentWithHtml,
-        tokens: totalTokenCount
+        tokens: tokenCount
     };
 
   } catch (error) {
-    console.error("Gemini API call failed:", error);
+    console.error("Backend text generation call failed:", error);
     if (error instanceof Error && error.message.includes('JSON')) {
         throw new Error("Failed to parse the response from the AI. The format was unexpected.");
     }
-    throw new Error("Failed to generate content. The request may be too complex. Please try simplifying your input.");
+    throw new Error(`Failed to generate content. ${error instanceof Error ? error.message : 'An unknown error occurred.'}`);
   }
 }
 
@@ -303,7 +280,6 @@ export async function autolinkEntities(
   currentContent: GeneratedContent,
   allDocTitles: string[]
 ): Promise<AutolinkResult> {
-  if (!ai) throw new Error("API Key is not configured.");
   if (allDocTitles.length === 0 || !currentContent.sections) return { content: currentContent, tokens: 0 };
 
   const textToProcess = currentContent.sections.map(sec => `## ${sec.heading}\n${stripHtml(sec.content)}`).join('\n\n');
@@ -322,42 +298,50 @@ ${textToProcess}
 `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-                sections: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                            heading: { type: Type.STRING },
-                            content: { type: Type.STRING },
-                        },
-                        required: ["heading", "content"]
-                    }
-                }
+    const apiResponse = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            prompt: prompt,
+            generationConfig: {
+                response_mime_type: "application/json",
+                response_schema: {
+                    type: "OBJECT",
+                    properties: {
+                        sections: {
+                            type: "ARRAY",
+                            items: {
+                                type: "OBJECT",
+                                properties: {
+                                    heading: { type: "STRING" },
+                                    content: { type: "STRING" },
+                                },
+                                required: ["heading", "content"]
+                            }
+                        }
+                    },
+                    required: ["sections"]
+                },
+                temperature: 0.0,
             },
-            required: ["sections"]
-        },
-        temperature: 0.0,
-      },
+            systemInstruction: "You are a helpful wiki-linking AI.",
+        })
     });
 
-    const tokens = response.usageMetadata?.totalTokenCount ?? 0;
-    const text = response.text.trim();
+    if (!apiResponse.ok) {
+        const errorData = await apiResponse.json();
+        throw new Error(errorData.error || 'The backend failed to generate content for autolinking.');
+    }
+
+    const { text, tokenCount } = await apiResponse.json();
     if (!text) {
-        throw new Error("Received an empty response from the API.");
+        throw new Error("Received an empty response from the backend for autolinking.");
     }
     const parsedJson = JSON.parse(text);
 
     if (!parsedJson.sections) {
          console.warn("Auto-linking parsing failed. Reverting.");
-        return { content: currentContent, tokens };
+        return { content: currentContent, tokens: tokenCount };
     }
     
     const newSections = parsedJson.sections.map((sec: GeneratedContentSection) => ({
@@ -365,10 +349,10 @@ ${textToProcess}
         content: `<p>${sec.content}</p>`,
     }));
 
-    return { content: { ...currentContent, sections: newSections }, tokens };
+    return { content: { ...currentContent, sections: newSections }, tokens: tokenCount };
 
   } catch (error) {
-    console.error("Gemini API call for auto-linking failed:", error);
+    console.error("Backend autolink call failed:", error);
     throw new Error("Failed to auto-link entities.");
   }
 }

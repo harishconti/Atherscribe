@@ -160,13 +160,13 @@ async function generateTextContent(
                   linkedContext += `\n\n---\nCONTEXT FROM LINKED DOCUMENT: "${linkedDoc.content.title}"\n`;
                   if (linkedDoc.content.sections) {
                       linkedDoc.content.sections.forEach(section => {
-                          linkedContext += `\n## ${section.heading}\n${stripHtml(section.content)}`;
+                          linkedContext += `\n## ${section.heading}\n${htmlToTextarea(section.content)}`;
                       });
                   } else if (linkedDoc.content.prompt) {
-                      linkedContext += `\n## Prompt\n${stripHtml(linkedDoc.content.prompt)}`;
+                      linkedContext += `\n## Prompt\n${htmlToTextarea(linkedDoc.content.prompt || '')}`;
                   }
                    if (linkedDoc.content.context) {
-                      linkedContext += `\n## Context\n${stripHtml(linkedDoc.content.context)}`;
+                      linkedContext += `\n## Context\n${htmlToTextarea(linkedDoc.content.context || '')}`;
                   }
                   linkedContext += '\n---';
               }
@@ -306,7 +306,7 @@ export async function autolinkEntities(
   if (!ai) throw new Error("API Key is not configured.");
   if (allDocTitles.length === 0 || !currentContent.sections) return { content: currentContent, tokens: 0 };
 
-  const textToProcess = currentContent.sections.map(sec => `## ${sec.heading}\n${stripHtml(sec.content)}`).join('\n\n');
+  const textToProcess = currentContent.sections.map(sec => `## ${sec.heading}\n${htmlToTextarea(sec.content)}`).join('\n\n');
 
   const prompt = `You are a wiki editor. Your task is to find mentions of existing document titles within a given text and automatically convert them into wiki-links using the format @[Document Title].
 
@@ -362,7 +362,7 @@ ${textToProcess}
     
     const newSections = parsedJson.sections.map((sec: GeneratedContentSection) => ({
         ...sec,
-        content: `<p>${sec.content}</p>`,
+        content: textareaToHtml(sec.content),
     }));
 
     return { content: { ...currentContent, sections: newSections }, tokens };

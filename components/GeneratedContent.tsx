@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import type { GeneratedContent, GeneratedContentSection } from '../types';
 import { exportToMarkdown, exportToPdf } from '../export';
@@ -6,6 +5,7 @@ import { useAppContext } from '../contexts/AppContext';
 import { htmlToTextarea, textareaToHtml } from '../services/geminiService';
 import Loader from './Loader';
 import DOMPurify from 'dompurify';
+import { AutosuggestTextarea } from './RichTextEditor';
 
 interface GeneratedContentDisplayProps {
   content: GeneratedContent;
@@ -76,18 +76,20 @@ const ExportButton = ({ content }: { content: GeneratedContent }) => {
 
 
 export default function GeneratedContentDisplay({ content, onSave, onClear, documentId }: GeneratedContentDisplayProps) {
-  const { handleUpdateDocument, documentsForActiveProject, handleSelectDocument, handleAutolinkDocument, addToast } = useAppContext();
+  const { handleUpdateDocument, documentsForActiveProject, handleSelectDocument, handleAutolinkDocument } = useAppContext();
 
   const [visible, setVisible] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editableContent, setEditableContent] = useState<GeneratedContent | null>(null);
   const [isAutolinking, setIsAutolinking] = useState(false);
 
+  const allDocTitles = useMemo(() => documentsForActiveProject.map(doc => doc.content.title), [documentsForActiveProject]);
+
   useEffect(() => {
     const timer = setTimeout(() => setVisible(true), 50);
+    // On content change (e.g., selecting a new doc or saving), exit edit mode and reset local state.
     setIsEditing(false);
-    // Deep copy content to avoid mutating the original state
-    setEditableContent(JSON.parse(JSON.stringify(content)));
+    setEditableContent(JSON.parse(JSON.stringify(content))); // Keep a local copy for potential edits
     return () => clearTimeout(timer);
   }, [content, documentId]);
 
@@ -110,33 +112,47 @@ export default function GeneratedContentDisplay({ content, onSave, onClear, docu
       return contentToScan.includes(linkSyntax);
     });
   }, [documentId, content, documentsForActiveProject]);
+  
+  const handleStartEditing = () => {
+    if (!content) return;
+    // Create a version of the content where relevant fields are converted to plain text for editing.
+    const plainTextContent = JSON.parse(JSON.stringify(content));
+    if (plainTextContent.sections) {
+        plainTextContent.sections.forEach((sec: GeneratedContentSection) => {
+            sec.content = htmlToTextarea(sec.content);
+        });
+    }
+    if (plainTextContent.context) {
+        plainTextContent.context = htmlToTextarea(plainTextContent.context);
+    }
+    setEditableContent(plainTextContent);
+    setIsEditing(true);
+  };
+
+  const handleCancelEditing = () => {
+      // Reset editable content from the original prop and exit edit mode.
+      setEditableContent(JSON.parse(JSON.stringify(content)));
+      setIsEditing(false);
+  };
 
   const handleEditChange = (type: 'title' | 'prompt' | 'context' | 'section', value: string, sectionIndex?: number) => {
     setEditableContent((prev): GeneratedContent | null => {
       if (!prev) return null;
 
-      // Type guard for visual content
-      if ('imageUrl' in prev && prev.imageUrl) {
-        const current = prev as Extract<GeneratedContent, { imageUrl: string }>;
-        if (type === 'title') return { ...current, title: value };
-        if (type === 'prompt') return { ...current, prompt: value };
-        if (type === 'context') return { ...current, context: value }; // Store raw text
-        return current;
-      }
+      // Note: At this point, the content fields in `prev` are plain text because of handleStartEditing.
+      const newContent = JSON.parse(JSON.stringify(prev));
 
-      // Type guard for text-based content
-      else if ('sections' in prev && prev.sections) {
-        const current = prev as Extract<GeneratedContent, { sections: any[] }>;
-        if (type === 'title') return { ...current, title: value };
+      if ('imageUrl' in newContent) {
+        if (type === 'title') newContent.title = value;
+        if (type === 'prompt') newContent.prompt = value;
+        if (type === 'context') newContent.context = value;
+      } else if ('sections' in newContent) {
+        if (type === 'title') newContent.title = value;
         if (type === 'section' && sectionIndex !== undefined) {
-          const newSections = [...current.sections];
-          newSections[sectionIndex] = { ...newSections[sectionIndex], content: value }; // Store raw text
-          return { ...current, sections: newSections };
+          newContent.sections[sectionIndex].content = value;
         }
-        return current;
       }
-
-      return prev;
+      return newContent;
     });
   };
 
@@ -145,7 +161,7 @@ export default function GeneratedContentDisplay({ content, onSave, onClear, docu
       // Create a deep copy to modify
       const contentToSave = JSON.parse(JSON.stringify(editableContent));
 
-      // Convert textarea plain text back to HTML before saving
+      // Convert plain text fields back to HTML before saving
       if (contentToSave.sections) {
         contentToSave.sections.forEach((section: GeneratedContentSection) => {
           section.content = textareaToHtml(section.content);
@@ -156,25 +172,25 @@ export default function GeneratedContentDisplay({ content, onSave, onClear, docu
       }
 
       handleUpdateDocument(documentId, contentToSave);
-      setIsEditing(false);
+      setIsEditing(false); // This will trigger the useEffect to reset state from props.
     }
   };
-
+  
   const handleAutoLink = async () => {
-    if (!documentId || !editableContent) return;
+    if (!documentId || !content) return;
 
     setIsAutolinking(true);
     try {
-        const updatedContent = await handleAutolinkDocument(documentId, editableContent);
-        if (updatedContent) {
-             setEditableContent(JSON.parse(JSON.stringify(updatedContent)));
-        }
+        // The context function handles the update. This component just triggers it.
+        // The component will re-render with the new content via props.
+        await handleAutolinkDocument(documentId, content);
     } catch (e) {
-        // Error is handled globally in context via toast
+        // Error is handled globally in context via toast.
     } finally {
         setIsAutolinking(false);
     }
   };
+
 
   const parseAndRenderHTML = useCallback((htmlContent: string) => {
     const sanitizedHtml = DOMPurify.sanitize(htmlContent);
@@ -229,11 +245,12 @@ export default function GeneratedContentDisplay({ content, onSave, onClear, docu
                             </div>
                              <div>
                                 <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Context / Reference</label>
-                                <textarea
-                                  value={htmlToTextarea(visualContent.context || '')}
-                                  onChange={(e) => handleEditChange('context', e.target.value)}
+                                <AutosuggestTextarea
+                                  value={visualContent.context || ''}
+                                  onValueChange={(value) => handleEditChange('context', value)}
                                   rows={6}
                                   className="w-full p-3 bg-white dark:bg-slate-900/70 border border-slate-300 dark:border-slate-700 rounded-lg"
+                                  suggestions={allDocTitles}
                                 />
                             </div>
                         </>
@@ -262,11 +279,12 @@ export default function GeneratedContentDisplay({ content, onSave, onClear, docu
               <h3 className="text-xl font-semibold text-slate-800 dark:text-slate-200 mb-2">
                 {section.heading}
               </h3>
-              <textarea
-                value={htmlToTextarea(section.content)}
-                onChange={(e) => handleEditChange('section', e.target.value, index)}
+              <AutosuggestTextarea
+                value={section.content}
+                onValueChange={(value) => handleEditChange('section', value, index)}
                 rows={10}
                 className="w-full p-3 bg-white dark:bg-slate-900/70 border border-slate-300 dark:border-slate-700 rounded-lg"
+                suggestions={allDocTitles}
               />
             </div>
           ))}
@@ -326,12 +344,12 @@ export default function GeneratedContentDisplay({ content, onSave, onClear, docu
                             )}
                             Auto-link
                         </button>
-                        <button onClick={() => setIsEditing(true)} className="bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200 text-sm">Edit</button>
+                        <button onClick={handleStartEditing} className="bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200 text-sm">Edit</button>
                     </>
                 )}
                 {isEditing && (
                     <>
-                        <button onClick={() => setIsEditing(false)} className="bg-slate-500 hover:bg-slate-600 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200 text-sm">Cancel</button>
+                        <button onClick={handleCancelEditing} className="bg-slate-500 hover:bg-slate-600 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200 text-sm">Cancel</button>
                         <button onClick={handleSaveChanges} className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200 text-sm">Save Changes</button>
                     </>
                 )}

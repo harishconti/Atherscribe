@@ -5,6 +5,7 @@ import GeneratedContentDisplay from './GeneratedContent';
 import { LOW_CREDIT_WARNING_THRESHOLD, INSUFFICIENT_CREDITS_ERROR_THRESHOLD } from '../constants';
 import { useAppContext } from '../contexts/AppContext';
 import { ActionButton } from './Buttons';
+import { AutosuggestTextarea } from './RichTextEditor';
 
 export default function Generator() {
   const { 
@@ -17,6 +18,7 @@ export default function Generator() {
     credits, 
     isProAiMode,
     handleShowPricing,
+    documentsForActiveProject,
   } = useAppContext();
 
   const [promptData, setPromptData] = useState<Record<string, string>>({});
@@ -27,6 +29,8 @@ export default function Generator() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const isUploadMode = uploadedFileContent !== null;
+
+  const allDocTitles = useMemo(() => documentsForActiveProject.map(doc => doc.content.title), [documentsForActiveProject]);
 
   const showLowCreditWarning = useMemo(() => {
     return credits <= LOW_CREDIT_WARNING_THRESHOLD && credits > INSUFFICIENT_CREDITS_ERROR_THRESHOLD;
@@ -93,14 +97,15 @@ export default function Generator() {
                 {field.label}
             </label>
             {field.type === 'textarea' ? (
-                <textarea
+                <AutosuggestTextarea
                     id={field.id}
                     value={isUploadMode && field.id === 'main_prompt' ? 'Using content from uploaded file...' : (promptData[field.id] || '')}
-                    onChange={(e) => handleInputChange(field.id, e.target.value)}
+                    onValueChange={(value) => handleInputChange(field.id, value)}
                     placeholder={field.placeholder}
                     rows={8}
                     className="w-full p-3 bg-white dark:bg-slate-900/70 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:outline-none transition-shadow text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 disabled:bg-slate-100 dark:disabled:bg-slate-800/60 disabled:cursor-not-allowed disabled:opacity-70"
                     disabled={isDisabled}
+                    suggestions={allDocTitles}
                 />
             ) : (
                 <input
@@ -141,7 +146,7 @@ export default function Generator() {
                   <div className="flex items-center justify-between w-full text-left p-3 rounded-lg bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600">
                     <div className="flex items-center truncate">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3 text-slate-500 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2-2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
                       </svg>
                       <span className="font-medium text-slate-700 dark:text-slate-200 truncate" title={uploadedFileName ?? ''}>{uploadedFileName}</span>
                     </div>

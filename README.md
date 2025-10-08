@@ -21,7 +21,7 @@
 
 AetherScribe bridges the gap between a fleeting idea and a fully-realized world. By leveraging the advanced capabilities of Google's Gemini API, it provides a structured yet flexible environment to generate, manage, and refine your creative concepts. Whether you're designing characters for a novel, locations for a TTRPG campaign, or magic systems for a video game, AetherScribe is your dedicated creative partner.
 
-This application runs entirely in your browser using a modern, build-less setup, ensuring your work and your API key remain private and secure on your own machine.
+This application runs entirely in your browser, ensuring your work and your API key remain private and secure on your own machine.
 
 ## Key Features
 
@@ -77,19 +77,20 @@ AetherScribe employs several advanced techniques to ensure the highest quality A
 -   **Graph Visualization**: [vis.js Network](https://visjs.github.io/vis-network/docs/network/) for the interactive knowledge graph.
 -   **PDF Export**: [jsPDF](https://github.com/parallax/jsPDF) for client-side PDF generation.
 -   **Persistence**: Browser LocalStorage API.
--   **Module Loading**: Uses ES Modules with an \`importmap\` in the browser for a modern, **no-build-step** development experience.
+-   **Vite**: A modern, fast build tool that provides a streamlined development experience.
+-   **Module Loading**: Uses ES Modules with an \`importmap\` in the browser for a modern development experience.
 
 ---
 
 ## Getting Started (Local Development)
 
-This project is a static web application that runs entirely in the browser without a build step.
+This project uses Vite for a modern and fast development experience.
 
 ### Prerequisites
 
+-   [Node.js](https://nodejs.org/) (which includes npm)
 -   A modern web browser (like Chrome, Firefox, or Edge).
--   A simple local web server. Node.js comes with \`npx\`, which makes this easy.
--   A Google Gemini API Key must be available as an environment variable named `API_KEY`. You can get a key from [Google AI Studio](https://aistudio.google.com/app/apikey).
+-   A Google Gemini API Key. You can get one from [Google AI Studio](https://aistudio.google.com/app/apikey).
 
 ### Installation & Setup
 
@@ -99,12 +100,22 @@ This project is a static web application that runs entirely in the browser witho
     cd [YOUR_REPO_NAME]
     ```
 
-2.  **Run the development server:**
-    From the root of the project directory, run a simple static file server. If you have Node.js installed, you can use \`serve\`:
+2.  **Install dependencies:**
     ```bash
-    npx serve
+    npm install
     ```
-    Now you can open your browser and navigate to the local address provided by the server (e.g., \`http://localhost:3000\`).
+
+3.  **Set up your environment variables:**
+    Create a file named `.env` in the root of the project and add your Gemini API key:
+    ```
+    GEMINI_API_KEY="YOUR_API_KEY_HERE"
+    ```
+
+4.  **Run the development server:**
+    ```bash
+    npm run dev
+    ```
+    This will start the Vite development server. Now you can open your browser and navigate to the local address provided (e.g., `http://localhost:5173`).
 
 
 ---
@@ -115,30 +126,23 @@ The codebase is organized to be clean, scalable, and easy to navigate.
 
 ```
 /
-├── components/      # Reusable React components
-│   ├── AboutPage.tsx
-│   ├── ConfirmModal.tsx
-│   ├── ContactPage.tsx
-│   ├── GeneratedContent.tsx
-│   ├── Generator.tsx
-│   ├── GraphView.tsx
-│   ├── Header.tsx
-│   ├── Loader.tsx
-│   ├── PricingPage.tsx
-│   ├── ProjectView.tsx
-│   ├── SettingsModal.tsx
-│   ├── Sidebar.tsx
-│   ├── SignInPage.tsx
-│   └── TemplateEditor.tsx
+├── components/      # Reusable React components (e.g., Sidebar, Generator, GraphView)
 ├── contexts/        # React Context providers for global state (AppContext.tsx)
-├── services/        # Modules for interacting with external APIs (geminiService.ts)
-├── App.tsx          # Main application component, view management
-├── constants.tsx    # Core application data (default templates, icons)
+├── services/        # Modules for external services (e.g., Gemini API, Local Storage)
+├── App.tsx          # Main application component, manages views and routing
+├── constants.tsx    # Core application data (default templates, icons, etc.)
 ├── export.ts        # Logic for exporting documents to MD and PDF
+├── hooks.ts         # Custom React hooks
 ├── index.html       # The main HTML entry point with importmap
 ├── index.tsx        # Application entry point
-├── README.md        # This file
-└── types.ts         # TypeScript type definitions and interfaces
+├── package.json     # Project dependencies and scripts
+├── server.js        # Express server for production deployment
+├── tsconfig.json    # TypeScript compiler configuration
+├── types.ts         # TypeScript type definitions and interfaces
+├── vite.config.ts   # Vite configuration file
+├── Dockerfile       # Docker configuration for containerization
+├── LICENSE          # Project license
+└── README.md        # This file
 ```
 
 ## Contributing
